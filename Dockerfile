@@ -1,33 +1,34 @@
 FROM tomcat:8-jre8-alpine
-MAINTAINER leo.lou@gov.bc.ca
+# MAINTAINER leo.lou@gov.bc.ca
 
 #Prepair ENV
-ARG appterm="gwaTermsUrl: http://www2.gov.bc.ca/gov/content?id=D1EE0A405E584363B205CD4353E02C88"
-ARG plugins=http.cgi,http.cors,http.expires,http.realip,net
+# ARG appterm="gwaTermsUrl: http://www2.gov.bc.ca/gov/content?id=D1EE0A405E584363B205CD4353E02C88"
+# ARG plugins=http.cgi,http.cors,http.expires,http.realip,net
 
-ENV CATALINA_HOME="/usr/local/tomcat" \
-    LANG=C.UTF-8 \
-    GLIBC_VERSION=2.25-r0 \
-    JAVA_VERSION=8 \
-    JAVA_UPDATE=151 \
-    JAVA_BUILD=12 \
-    JAVA_HOME="/opt/jdk"
+ENV CATALINA_HOME="/usr/local/tomcat"
+#     LANG=C.UTF-8 \
+#     GLIBC_VERSION=2.25-r0 \
+#     JAVA_VERSION=8 \
+#     JAVA_UPDATE=151 \
+#     JAVA_BUILD=12 \
+#     JAVA_HOME="/opt/jdk"
 
 # ENV JRE_DL_URL=http://download.oracle.com/otn-pub/java/jdk/${JAVA_VERSION}u${JAVA_UPDATE}-b${JAVA_BUILD}/e758a0de34e24606bca991d704f6dcbf/server-jre-${JAVA_VERSION}u${JAVA_UPDATE}-linux-x64.tar.gz
 
+RUN apk upgrade --update && apk add --update curl
 
 # http://download.oracle.com/otn-pub/java/jdk/8u151-b12/e758a0de34e24606bca991d704f6dcbf/server-jre-8u151-linux-x64.tar.gz
 # #Patch GLIBC required by Oracle JDK
-RUN apk upgrade --update && apk add --update libstdc++ curl wget ca-certificates && \
-    for pkg in glibc-${GLIBC_VERSION} glibc-bin-${GLIBC_VERSION} glibc-i18n-${GLIBC_VERSION}; do curl -sSL https://github.com/andyshinn/alpine-pkg-glibc/releases/download/${GLIBC_VERSION}/${pkg}.apk -o /tmp/${pkg}.apk -o /tmp/${pkg}.apk; done && \
-    apk add --allow-untrusted /tmp/*.apk && \
-    rm -v /tmp/*.apk && \
-    ( /usr/glibc-compat/bin/localedef --force --inputfile POSIX --charmap UTF-8 C.UTF-8 || true ) && \
-    echo "export LANG=C.UTF-8" > /etc/profile.d/locale.sh && \
-    /usr/glibc-compat/sbin/ldconfig /lib /usr/glibc-compat/lib
-RUN \
-    for tbd in `ls /usr/lib/jvm/java-1.8-openjdk/bin/`; do rm -f /usr/bin/$tbd; done && \
-    rm -rf /usr/lib/jvm/*
+# RUN apk upgrade --update && apk add --update libstdc++ curl wget ca-certificates && \
+#     for pkg in glibc-${GLIBC_VERSION} glibc-bin-${GLIBC_VERSION} glibc-i18n-${GLIBC_VERSION}; do curl -sSL https://github.com/andyshinn/alpine-pkg-glibc/releases/download/${GLIBC_VERSION}/${pkg}.apk -o /tmp/${pkg}.apk -o /tmp/${pkg}.apk; done && \
+#     apk add --allow-untrusted /tmp/*.apk && \
+#     rm -v /tmp/*.apk && \
+#     ( /usr/glibc-compat/bin/localedef --force --inputfile POSIX --charmap UTF-8 C.UTF-8 || true ) && \
+#     echo "export LANG=C.UTF-8" > /etc/profile.d/locale.sh && \
+#     /usr/glibc-compat/sbin/ldconfig /lib /usr/glibc-compat/lib
+# RUN \
+#     for tbd in `ls /usr/lib/jvm/java-1.8-openjdk/bin/`; do rm -f /usr/bin/$tbd; done && \
+#     rm -rf /usr/lib/jvm/*
 
 #Install Oracle Server Side JRE
 WORKDIR /tmp
@@ -65,30 +66,36 @@ WORKDIR /tmp
 #            $JAVA_HOME/jre/lib/amd64/libjfx*.so \
 # 		   /tmp/* /var/cache/apk/*
 
-RUN apk update \
-  && apk add alpine-sdk \
-  && git config --global url.https://github.com/.insteadOf git://github.com/
+# RUN apk update \
+#   && apk add alpine-sdk \
+#   && git config --global url.https://github.com/.insteadOf git://github.com/
 
 
-RUN rm -rf /usr/local/tomcat/webapps/* && mkdir /usr/local/tomcat/config /usr/local/tomcat/webapps/ROOT
+# RUN rm -rf /usr/local/tomcat/webapps/* && mkdir /usr/local/tomcat/config /usr/local/tomcat/webapps/ROOT
 
 #Copy client war
-RUN wget -O /tmp/smk-client.war $APPBIN/smk-client/1.0.0-SNAPSHOT/smk-client-1.0.0-SNAPSHOT.war \
-  && unzip /tmp/smk-client.war -d /usr/local/tomcat/webapps/ROOT
+RUN wget -O /tmp/smk-client.war $APPBIN/smk-client/$SMKVER/smk-client-$SMKVER.war \
+  && cp /tmp/smk-client.war /usr/local/tomcat/webapps
+  # && unzip /tmp/smk-client.war -d /usr/local/tomcat/webapps/ROOT
 
 #Copy SMK Admin UI
-RUN wget -O /tmp/smk-ui.war $APPBIN/smk-ui/1.0.0-SNAPSHOT/smk-ui-1.0.0-SNAPSHOT.war \
-  && unzip /tmp/smk-ui.war -d /usr/local/tomcat/webapps/ROOT
+RUN wget -O /tmp/smk-ui.war $APPBIN/smk-ui/$SMKVER/smk-ui-$SMKVER.war \
+  && cp /tmp/smk-ui.war /usr/local/tomcat/webapps
+  # && unzip /tmp/smk-ui.war -d /usr/local/tomcat/webapps/ROOT
 
 #Copy SMK api
-RUN wget -O /tmp/smks-api.war $APPBIN/smks-api/1.0.0-SNAPSHOT/smks-api-1.0.0-SNAPSHOT.war \
-  && unzip /tmp/smks-api.war -d /usr/local/tomcat/webapps/ROOT
-  
+RUN wget -O /tmp/smks-api.war $APPBIN/smks-api/$SMKVER/smks-api-$SMKVER.war \
+  # && cp /tmp/smks-api.war /usr/local/tomcat/webapps
+  && mkdir -p /usr/local/tomcat/webapps/smks-api \
+  && unzip /tmp/smks-api.war -d /usr/local/tomcat/webapps/smks-api
+
+RUN echo "couchdb.admin.password=$COUCHPW" >> /usr/local/tomcat/webapps/smks-api/WEB-INF/classes/application.properties
+
 #Setup runtime configuration
 ##Generate GWA required configuration
 ##RUN printf "$KAURL\n$KUSER\n$KPWD\n$appterm\n$GWA_ORG\n$GH_CID\n$GH_CIS\n$GH_ATOKEN" > /usr/local/tomcat/config/gwa.properties
 ##Add Tomcat Servlet Services configuration
-COPY tomcat/server.xml $CATALINA_HOME/conf/server.xml
+# COPY tomcat/server.xml $CATALINA_HOME/conf/server.xml
 ##Add Container startup scripts
 ##COPY bin/runme /usr/bin/runme
 
@@ -97,9 +104,9 @@ WORKDIR $CATALINA_HOME
 RUN adduser -S tomcat
 RUN chown -R tomcat:0 /usr/local/tomcat && chmod -R 770 /usr/local/tomcat
 ##&& chmod 755 /usr/bin/runme
-RUN apk del --purge alpine-sdk
+# RUN apk del --purge alpine-sdk
 
 USER tomcat
 
 EXPOSE 8080
-# CMD catalina.sh run
+CMD catalina.sh run
